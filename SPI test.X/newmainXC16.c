@@ -136,6 +136,33 @@ void WriteEE( int address, int data) {
     WriteSPI1( data & 0x00ff); // az adat küldése 
     CSEE = 1; // EEPROM elengedése
 }
+
+//Adat írása a 16 bites címt?l n adattal egy bufferb?l
+void WriteEEn( int address, char *data, int n){
+    int i=0;
+    while ( ReadSR() & 0x01); // írás folyamatának vége (WIP)
+    WriteEnable(); // írás engedélyezése
+    CSEE = 0; // EEPROM kiválasztása
+    WriteSPI1( SEE_WRITE); // írás parancs
+    WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB)
+    WriteSPI1( address & 0x00ff); // a cím alsó része (LSB)
+    for(i=0; i < n; i++)
+    WriteSPI1( *data++ ); // az adat küldése
+    CSEE = 1; // EEPROM elengedése
+}
+
+// 16 bites címt?l n adat olvasása data bufferbe
+void ReadEEn( int address, char *data, int n){
+    int i;
+    while ( ReadSR() & 0x01); // írás folyamatának vége (WIP)
+    CSEE = 0; // EEPROM kiválasztása
+    WriteSPI1( SEE_READ); // olvasás parancs
+    WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB)
+    WriteSPI1( address & 0x00ff); // a cím alsó része (LSB)
+    for(i=0; i < n; i++)
+    *data++ = WriteSPI1(0); // dummy érték küldése/érték beolvasása
+    CSEE = 1; // EEPROM elengedése
+}
 /////////</EEPROM>/////////
 
 ///////////<LCD>///////////
@@ -298,9 +325,6 @@ int authenticate(char* pwd){
     if(strcmp(PWD,pwd)==0){
         LCDclr();
         putsLCD("PASS"); 
-        putsLCD("PASS"); 
-        putsLCD("PASS"); 
-        putsLCD("PASS"); 
         putsUART1("Access granted\r\n");
         putsUART1("Add new password\r\n");
         return 1;
@@ -313,11 +337,29 @@ int authenticate(char* pwd){
     }
 }
 
-int saveData(int addr,char newChar){
-   confTRISB('s');
-   WriteEE(addr, newChar);                 //EEPROM írása 
-   confTRISB('e');
-   return 0;
+int saveData(int addr,char newEntry[]){
+    confTRISB('s');
+    WriteEEn(addr,newEntry,64);
+    confTRISB('e');
+    putsUART1("\n\rData saved\n\r");
+  return addr + 64;
+}
+
+void login(int addr,char pwd[]){
+    int i;
+    confTRISB('s');
+    char buff[64];
+    for(i=0;i<=addr;i+=64){
+        ReadEEn(i,buff,64);
+        if(strcmp(buff,pwd)==0){
+            confTRISB('e');
+            putsUART1("\n\rSuccesful login\n\r");
+            G_LED;
+            return;
+        }
+    }
+    R_LED;
+    putsUART1("\n\rWrong passowrd\n\r");
 }
 
 ///////////</FUNCTIONALITY>///////////
@@ -356,7 +398,6 @@ putsUART1("Program started\r\n"); //Szöveg kiküldése az UART1-re
 */
 int readMode = 0;
 int flag = 0;
-int cnt = 0;
 int addr = 0;
 int lengthArr[10];
 int i; 
@@ -367,7 +408,6 @@ char c[10];
 while(1){
     getsUART1(c,10); //beérkezo karakterekre várunk vagy Enterre
     char *s = (char *)&c;
-    if( *s == '?') putsUART1("uMOGI Panelr\n");
     if(readMode == 0){
         while (*s) {
             switch(*s) {
@@ -379,33 +419,38 @@ while(1){
                     putsUART1("Login as root\n\r");
                     putsUART1("Password:\r\n");
                     break; 
-                default: putsUART1("Invalid command\r\n"); break;
+                case 'l': flag=3; break;
+                //DEBUG
+                case 'w':
+                    confTRISB('s');
+                    char buff[64];
+                    ReadEEn(0,buff,64);
+                    confTRISB('e');
+                    putsUART1("\n\rResult:\n\r");
+                    putsUART1(buff);
+                    confTRISB('s');
+                    ReadEEn(64,buff,64);
+                    confTRISB('e');
+                    putsUART1("\n\rResult:\n\r");
+                    putsUART1(buff);
+                    break;
+                case 'c': for(i=0;i<10000;i++)WriteEE(i,0); break;
+                case '?':putsUART1(
+                        "uMOGI panel\n\r\
+                        Command list:\n\r\
+                        \'a\':Login as admin and add new entry\n\r\
+                        \'l\':Login as user\n\r\
+                        \'?\':Display this message"
+                        );
+                break;
+                default: putsUART1("Invalid command\r\n");  break;
             }
             s++;
         }
     }
     if(readMode == 1) flag = (authenticate(c)) ? 2 : 0;
-    if(readMode == 2) {
-        while (*s) {
-            saveData(addr,*s);
-            addr++;
-            s++;
-        }        
-        flag = 0;
-        
-        DELAY_MS(2000);             //késleltetés 2s
-        char* LCD = (char *)malloc(80);
-        putsUART1("EEPROM:\r\n");
-        sprintf(LCD, "%c",ReadEE(0)); 
-        putsUART1(LCD);
-        sprintf(LCD, "%c",ReadEE(1));    
-        putsUART1(LCD);
-        sprintf(LCD, "%c",ReadEE(2));  
-        putsUART1(LCD);
-        sprintf(LCD, "%c",ReadEE(3));  
-        putsUART1(LCD);
-        
-    }
+    if(readMode == 2) {addr= saveData(addr,c);flag=0; }
+    if(readMode == 3) {login(addr, c);flag=0; }
     readMode = flag;
 }
 
