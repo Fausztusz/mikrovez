@@ -77,7 +77,7 @@
 #define BRGVAL ((FCY/BAUDRATE)/16) - 1
 
 //Root password
-#define PWD "oc"
+#define PWD "root"
 
 
 /////////<EEPROM>/////////
@@ -313,163 +313,192 @@ char *getsUART1( char *s, int len){
 ///////////</UART>///////////
 
 ///////////<FUNCTIONALITY>///////////
-void confTRISB(char a){
-    if(a=='s'){
+/**
+ * Both SPI and UART use the TRISB leg
+ * This function switch between the two mode
+ * @param mode
+ */
+void confTRISB(char mode){
+    if(mode == 's'){
         TRISB=TRISB & 0x0FFF;   //LED kimenet, minden más bemenet 
-        _TRISB5=1;              //SDI1 bemenet
+        _TRISB5 = 1;              //SDI1 bemenet
     }
-    else if(a=='u')TRISB=0; //PORTB kimenet
+    else if(mode == 'u')TRISB=0; //PORTB kimenet
 }
-
+/**
+ * Authenticate the root user with root PWD
+ * @param pwd
+ * @return 1 if the password is correct 0 if its not
+ */
 int authenticate(char* pwd){
-    if(strcmp(PWD,pwd)==0){
+    if(strcmp(PWD,pwd) == 0){
         LCDclr();
         putsLCD("PASS"); 
         putsUART1("Access granted\r\n");
         putsUART1("Add new password\r\n");
+        G_LED;
         return 1;
     }
     else{
         LCDclr();
-        putsLCD("DENIED");        
+        putsLCD("ACCESS DENIED");        
         putsUART1("Access denied\r\n");
         return 0;
     }
 }
 
+/**
+ * Save data to a 64bit memory block of the EEPROM
+ * @param addr The starting addres of the memory block
+ * @param newEntry The message to save
+ * @return The address of the end of the block
+ */
 int saveData(int addr,char newEntry[]){
-    confTRISB('s');
-    WriteEEn(addr,newEntry,64);
-    confTRISB('e');
-    putsUART1("\n\rData saved\n\r");
+        confTRISB('s');
+        WriteEEn(addr,newEntry,64);
+        confTRISB('e');
+   
+   //Prevents writing message when we initialize the program
+   if(strcmp(PWD,newEntry)!=0){
+       putsUART1("\rData saved\n\r");
+       LCDclr();
+       putsLCD("Data saved");
+   }
   return addr + 64;
 }
-
+/**
+ * Try to authenticate the user with the given passoword
+ * @param addr The current maximum address
+ * @param pwd The users password
+ */
 void login(int addr,char pwd[]){
     int i;
     confTRISB('s');
     char buff[64];
-    for(i=0;i<=addr;i+=64){
+    for(i = 0;i <= addr;i += 64){
         ReadEEn(i,buff,64);
-        if(strcmp(buff,pwd)==0){
+        if(strcmp(buff,pwd) == 0){
             confTRISB('e');
-            putsUART1("\n\rSuccesful login\n\r");
+            putsUART1("\rSuccesful login\n\r");
+            LCDclr();
+            putsLCD("Succesful login"); 
             G_LED;
             return;
         }
     }
     R_LED;
-    putsUART1("\n\rWrong passowrd\n\r");
+    putsUART1("\rWrong passowrd\n\r");
+    LCDclr();
+    putsLCD("Wrong passowrd"); 
 }
 
 ///////////</FUNCTIONALITY>///////////
 int main(void) {
     
-SetupClock();
-initLCD();                  //LCD modul inicializálása 
+    SetupClock();
+    initLCD();                  //LCD modul inicializálása 
 
-confTRISB('s');
-__builtin_write_OSCCONL(OSCCON & 0xbf); //PPSUnLock 
-//SPI 
-RPINR20bits.SDI1R=5;    //14-es láb SDI1 
-RPOR3bits.RP6R=7;       //15-ös láb     SDO1 
-RPOR3bits.RP7R=8;       //16-os láb SCLK1 
-//SPI inicializálása 5MHz-es órajellel 
-SPI1CON1 = 0x013A; // master mód, CKP=0, CKE=1, 8-bites, 1:2, 1:4 
-SPI1STAT = 0x8000; // SPI engedélyezése, státuszok törlése    
-InitEE(); //EEPROM inicializálása
+    //Sets up the SPI module for the commuinication with the EEPROM
+    confTRISB('s');
+    __builtin_write_OSCCONL(OSCCON & 0xbf); //PPSUnLock 
+    //SPI 
+    RPINR20bits.SDI1R=5;    //14-es láb SDI1 
+    RPOR3bits.RP6R=7;       //15-ös láb     SDO1 
+    RPOR3bits.RP7R=8;       //16-os láb SCLK1 
+    //SPI inicializálása 5MHz-es órajellel 
+    SPI1CON1 = 0x013A; // master mód, CKP=0, CKE=1, 8-bites, 1:2, 1:4 
+    SPI1STAT = 0x8000; // SPI engedélyezése, státuszok törlése    
+    InitEE(); //EEPROM inicializálása
 
-confTRISB('u');
-TRISBbits.TRISB11=1; //RX bemenet
-RPOR5bits.RP10R=3; //21-es láb TX
-RPINR18bits.U1RXR=11; //22-es láb RX
-__builtin_write_OSCCONL(OSCCON | 0x40); //PPSLock
-initUART1(); //UART1 inicializálása
+    //Sets up the UART commuinication
+    confTRISB('u');
+    TRISBbits.TRISB11=1; //RX bemenet
+    RPOR5bits.RP10R=3; //21-es láb TX
+    RPINR18bits.U1RXR=11; //22-es láb RX
+    __builtin_write_OSCCONL(OSCCON | 0x40); //PPSLock
+    initUART1(); //UART1 inicializálása
 
 
 
-putsUART1("Program started\r\n"); //Szöveg kiküldése az UART1-re
-/**
- * Read Modes
- * 0:General command
- * 1:Waiting for password
- * 2:Set new entry
- * 3:Login
-*/
-int readMode = 0;
-int flag = 0;
-int addr = 0;
-int lengthArr[10];
-int i; 
-for( i = 0;i < 10;i++ ) lengthArr[i] = 0;
+    putsUART1("Program started\r\n"); //Szöveg kiküldése az UART1-re
+    /**
+     * Read Modes
+     * 0:General command
+     * 1:Waiting for master password
+     * 2:Set new entry
+     * 3:Login as normal user
+    */
+    int readMode = 0;
+    int flag = 0;
+    int addr = 0;
+    int i; 
 
-char c[10];
-//Main loop
-while(1){
-    getsUART1(c,10); //beérkezo karakterekre várunk vagy Enterre
-    char *s = (char *)&c;
-    if(readMode == 0){
-        while (*s) {
-            switch(*s) {
-                case 'r': R_LED; break; //R LED világít
-                case 'g': G_LED; break; //G LED világít
-                case 'b': B_LED; break; //B LED világít
-                case 'a':               //Add new entry
-                    flag = 1; 
-                    putsUART1("Login as root\n\r");
-                    putsUART1("Password:\r\n");
-                    break; 
-                case 'l': flag=3; break;
-                //DEBUG
-                case 'w':
-                    confTRISB('s');
-                    char buff[64];
-                    ReadEEn(0,buff,64);
-                    confTRISB('e');
-                    putsUART1("\n\rResult:\n\r");
-                    putsUART1(buff);
-                    confTRISB('s');
-                    ReadEEn(64,buff,64);
-                    confTRISB('e');
-                    putsUART1("\n\rResult:\n\r");
-                    putsUART1(buff);
+    //Puts master password to memory
+    confTRISB('s');
+    addr = saveData(addr,PWD);
+    confTRISB('e');
+
+    char c[64];
+    //Main loop
+    while(1){
+        getsUART1(c,64); //beérkezo karakterekre várunk vagy Enterre
+        char *s = (char *)&c;
+        if(readMode == 0){
+            B_LED;                          //B LED világít
+            while (*s) {
+                switch(*s) {
+                   case 'a':               //Add new entry
+                        flag = 1; 
+                        putsUART1("Login as root\n\r");
+                        putsUART1("Password:\r\n");
+                        LCDclr();
+                        putsLCD("Login as root");
+                        *s = NULL;
+                        break; 
+                    case 'l': 
+                        flag=3;
+                        LCDclr();
+                        putsLCD("Enter password");
+                        putsUART1("Enter password:\n\r");
+                        *s = NULL;
+                        break;
+                    case '?':putsUART1(
+                            "uMOGI panel\n\r\
+                            \rCommand list:\n\r\
+                            \r'a\':Login as admin and add new entry\n\r\
+                            \r'l\':Login as normal user\n\r\
+                            \r'?\':Display this message\n\r"
+                            );
+                    *s = NULL;
                     break;
-                case 'c': for(i=0;i<10000;i++)WriteEE(i,0); break;
-                case '?':putsUART1(
-                        "uMOGI panel\n\r\
-                        Command list:\n\r\
-                        \'a\':Login as admin and add new entry\n\r\
-                        \'l\':Login as user\n\r\
-                        \'?\':Display this message"
-                        );
-                break;
-                default: putsUART1("Invalid command\r\n");  break;
+                    default:
+                        putsUART1("Invalid command\r\n");
+                        LCDclr();
+                        putsLCD("Invalid command");   
+                        break;
+                }
+                s++;
             }
-            s++;
         }
+        if(readMode == 1) flag = (authenticate(c)) ? 2 : 0;
+        if(readMode == 2) {
+            if(strcmp(c,"clear") == 0){
+                putsUART1("Reseting memory this could take a few seconds\r");
+                LCDclr();
+                putsLCD("Reseting memory"); 
+                confTRISB('s');
+                for(i = 64; i < 10000; i++)WriteEE(i,0);//Resets memory
+                confTRISB('e');
+                putsUART1("Memory reseted                                 \n\r");
+                LCDclr();
+                putsLCD("Memory reseted"); 
+            } 
+            else addr = saveData(addr,c);   //Save data to the EEPROM
+            flag = 0; 
+        }
+        if(readMode == 3) {login(addr, c);flag = 0; }
+        
+        readMode = flag;
     }
-    if(readMode == 1) flag = (authenticate(c)) ? 2 : 0;
-    if(readMode == 2) {addr= saveData(addr,c);flag=0; }
-    if(readMode == 3) {login(addr, c);flag=0; }
-    readMode = flag;
+    return (0); 
 }
-
-
-//Byte írása/olvasása 
-confTRISB('s');
-WriteEE(12, 25);                 //EEPROM írása 
-WriteEE(11, 10);                 //EEPROM írása 
-if ( ReadEE(12) != 25) { R_LED;} //ha nem sikerült, piros LED 
-else G_LED;                       //ha igen, zöld LED
-
-char* LCD = (char *)malloc(80);
-sprintf(LCD, "Szam:\n%i",ReadEE(12));    //Szám konvertálása 
-LCDclr();                           //LCD törlése 
-
-
-DELAY_MS(2000);             //késleltetés 2s
-sprintf(LCD, "Szam:\n%i",ReadEE(11));    //Szám konvertálása 
-LCDclr();                           //LCD törlése 
-putsLCD(LCD);                       //Szöveg kiküldése az LCD-re
-
-while(1); return (0); }
