@@ -335,7 +335,7 @@ int authenticate(char* pwd){
         LCDclr();
         putsLCD("PASS"); 
         putsUART1("Access granted\r\n");
-        putsUART1("Add new password\r\n");
+        putsUART1("Add new password:\r\n");
         G_LED;
         return 1;
     }
@@ -360,7 +360,7 @@ int saveData(int addr,char newEntry[]){
    
    //Prevents writing message when we initialize the program
    if(strcmp(PWD,newEntry)!=0){
-       putsUART1("\rData saved\n\r");
+       putsUART1("\rData saved                                           \n\r");
        LCDclr();
        putsLCD("Data saved");
    }
@@ -379,7 +379,7 @@ void login(int addr,char pwd[]){
         ReadEEn(i,buff,64);
         if(strcmp(buff,pwd) == 0){
             confTRISB('e');
-            putsUART1("\rSuccesful login\n\r");
+            putsUART1("\rSuccesful login                                 \n\r");
             LCDclr();
             putsLCD("Succesful login"); 
             G_LED;
@@ -387,7 +387,7 @@ void login(int addr,char pwd[]){
         }
     }
     R_LED;
-    putsUART1("\rWrong passowrd\n\r");
+    putsUART1("\rWrong passowrd                                          \n\r");
     LCDclr();
     putsLCD("Wrong passowrd"); 
 }
@@ -442,44 +442,38 @@ int main(void) {
     //Main loop
     while(1){
         getsUART1(c,64); //beérkezo karakterekre várunk vagy Enterre
-        char *s = (char *)&c;
         if(readMode == 0){
             B_LED;                          //B LED világít
-            while (*s) {
-                switch(*s) {
+            switch(c[0]) {
                    case 'a':               //Add new entry
                         flag = 1; 
                         putsUART1("Login as root\n\r");
                         putsUART1("Password:\r\n");
                         LCDclr();
                         putsLCD("Login as root");
-                        *s = NULL;
                         break; 
                     case 'l': 
                         flag=3;
                         LCDclr();
                         putsLCD("Enter password");
                         putsUART1("Enter password:\n\r");
-                        *s = NULL;
                         break;
-                    case '?':putsUART1(
+                    case '?':
+                        putsUART1(
                             "uMOGI panel\n\r\
                             \rCommand list:\n\r\
                             \r'a\':Login as admin and add new entry\n\r\
                             \r'l\':Login as normal user\n\r\
                             \r'?\':Display this message\n\r"
                             );
-                    *s = NULL;
-                    break;
+                        break;
                     default:
                         putsUART1("Invalid command\r\n");
                         LCDclr();
                         putsLCD("Invalid command");   
                         break;
                 }
-                s++;
             }
-        }
         if(readMode == 1) flag = (authenticate(c)) ? 2 : 0;
         if(readMode == 2) {
             if(strcmp(c,"clear") == 0){
@@ -489,7 +483,7 @@ int main(void) {
                 confTRISB('s');
                 for(i = 64; i < 10000; i++)WriteEE(i,0);//Resets memory
                 confTRISB('e');
-                putsUART1("Memory reseted                                 \n\r");
+                putsUART1("Memory reseted                                \n\r");
                 LCDclr();
                 putsLCD("Memory reseted"); 
             } 
@@ -499,6 +493,7 @@ int main(void) {
         if(readMode == 3) {login(addr, c);flag = 0; }
         
         readMode = flag;
+        if(readMode == 0)B_LED;
     }
     return (0); 
 }
