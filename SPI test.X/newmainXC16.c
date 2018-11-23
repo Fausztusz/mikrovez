@@ -1,6 +1,6 @@
 /*
  * File:   newmainXC16.c
- * Author: student
+ * Author: Fauszt András, Kis Levente
  *
  * Created on 13 November 2018, 08:38
  */
@@ -87,28 +87,27 @@ CSEE = 1;// EEPROM elengedése
 }
 
 //1 bájt küldése és fogadása
-int WriteSPI1( int i)
-{
-SPI1BUF = i;// bufferírása küldésre
-while( !SPI1STATbits.SPIRBF);// várakozás az átvitel // befejezéséig
-return SPI1BUF; // beérkez? adat kiolvasása
+int WriteSPI1( int i){
+	SPI1BUF = i;// bufferírása küldésre
+	while( !SPI1STATbits.SPIRBF);// várakozás az átvitel // befejezéséig
+	return SPI1BUF; // beérkezõ adat kiolvasása
 }
 
 //Írás engedélyezése 
 void WriteEnable( void) { 
-CSEE = 0; // EEPROM kiválasztása 
-WriteSPI1( SEE_WEN); // írás engedélyezése parancs 
-CSEE = 1; // EEPROM elengedése 
+	CSEE = 0; // EEPROM kiválasztása 
+	WriteSPI1( SEE_WEN); // írás engedélyezése parancs 
+	CSEE = 1; // EEPROM elengedése 
 }
 
 // státusz regiszter olvasása
 int ReadSR( void){
-int i;
-CSEE = 0;// EEPROM kiválasztása
-WriteSPI1( SEE_RDSR); // státusz regiszter olvasása
-i = WriteSPI1(0);// küldés/fogadás
-CSEE = 1;// EEPROM elengedése
-return i;
+	int i;
+	CSEE = 0;// EEPROM kiválasztása
+	WriteSPI1( SEE_RDSR); // státusz regiszter olvasása
+	i = WriteSPI1(0);// küldés/fogadás
+	CSEE = 1;// EEPROM elengedése
+	return i;
 };
 
 // 16 bites cím tartalmának olvasása 
@@ -116,13 +115,13 @@ int ReadEE( int address) {
     int val; 
     while ( ReadSR() & 0x01);
     // írás folyamatának vége (WIP)
-        CSEE = 0; // EEPROM kiválasztása 
-        WriteSPI1( SEE_READ); // olvasás parancs 
-        WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB) 
-        WriteSPI1( address & 0x00ff); // a cím alsó része (LSB) 
-        val = WriteSPI1(0);     // dummy érték küldése/érték beolvasása 
-        CSEE = 1;               // EEPROM elengedése 
-        return val;
+	CSEE = 0; // EEPROM kiválasztása 
+	WriteSPI1( SEE_READ); // olvasás parancs 
+	WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB) 
+	WriteSPI1( address & 0x00ff); // a cím alsó része (LSB) 
+	val = WriteSPI1(0);     // dummy érték küldése/érték beolvasása 
+	CSEE = 1;               // EEPROM elengedése 
+	return val;
 }
 
 //Adat írása a 16 bites címre 
@@ -147,7 +146,7 @@ void WriteEEn( int address, char *data, int n){
     WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB)
     WriteSPI1( address & 0x00ff); // a cím alsó része (LSB)
     for(i=0; i < n; i++)
-    WriteSPI1( *data++ ); // az adat küldése
+		WriteSPI1( *data++ ); // az adat küldése
     CSEE = 1; // EEPROM elengedése
 }
 
@@ -160,7 +159,7 @@ void ReadEEn( int address, char *data, int n){
     WriteSPI1( (address>>8) & 0x00ff); // a cím fels? része (MSB)
     WriteSPI1( address & 0x00ff); // a cím alsó része (LSB)
     for(i=0; i < n; i++)
-    *data++ = WriteSPI1(0); // dummy érték küldése/érték beolvasása
+		*data++ = WriteSPI1(0); // dummy érték küldése/érték beolvasása
     CSEE = 1; // EEPROM elengedése
 }
 /////////</EEPROM>/////////
@@ -177,20 +176,20 @@ void pulseE(void){
 
 //LCD lábak konfigurálása
 void configLCD(void){
-TRISB = TRISB && 0x0FFF; //D4-D7 kimenet
-_TRISA0=0; //RS kimenet
-_TRISA1=0; //E kimenet
-_LATA0 = 0; //RS alacsony
-_LATA1 = 0; //E alacsony
+	TRISB = TRISB && 0x0FFF; //D4-D7 kimenet
+	_TRISA0=0; //RS kimenet
+	_TRISA1=0; //E kimenet
+	_LATA0 = 0; //RS alacsony
+	_LATA1 = 0; //E alacsony
     
 }
 
 //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata
 void toLCD(char c) {
-_LATB12 = c & 0x01; //D4
-_LATB13 = (c >> 1)& 0x01; //D5
-_LATB14 = (c >> 2)& 0x01; //D6
-_LATB15 = (c >> 3)& 0x01; //D7
+	_LATB12 = c & 0x01; //D4
+	_LATB13 = (c >> 1)& 0x01; //D5
+	_LATB14 = (c >> 2)& 0x01; //D6
+	_LATB15 = (c >> 3)& 0x01; //D7
 };
 
 // Adat vagy parancs küldése
@@ -198,7 +197,6 @@ _LATB15 = (c >> 3)& 0x01; //D7
 // rs 0 - parancs, 1 - adat
 // bit8 0 - fels? 4bit küldése, 1 - 8 bit küldése 2 részletben 
 void writeLCD(char c, int rs, int bit8) { 
-    
     DELAY_MS(10);  //nem nézzük a foglaltságot, csak késleltetünk
     if (rs) _LATA0 = 1;    // adat 
     else _LATA0 = 0;    // parancs 
@@ -213,52 +211,35 @@ void writeLCD(char c, int rs, int bit8) {
 //--Kiír egy karakterfüzért az LCD-re 
 void putsLCD(char *s) { 
     
-while (*s) { 
-    char c = *s;
-    if (c == '\n')     
-        LCD2row();  //Kurzor mozgatása a második sor elejére 
-    else 
-        putLCD(c);      //Karakter kiíratása 
-    s++; 
-    } 
-    toLCD(0);    //RGB miatt }
+	while (*s) { 
+		char c = *s;
+		if (c == '\n')     
+			LCD2row();  //Kurzor mozgatása a második sor elejére 
+		else 
+			putLCD(c);      //Karakter kiíratása 
+		s++; 
+	} 
+		toLCD(0);    //RGB miatt }
 }
 
 void initLCD() {
-configLCD(); //az LCD vezérl? vonalainak beállítása
-DELAY_MS(20);   //vár az eszköz beállására 
-cmd1LCD(0x30);  // 4 bites interface 
-DELAY_MS(5);    //vár az eszköz beállására 
-cmd1LCD(0x30);  // 4 bites interface 
-DELAY_MS(1);    //vár az eszköz beállására 
-cmd1LCD(0x30);  // 4 bites interface
+	configLCD(); //az LCD vezérl? vonalainak beállítása
+	DELAY_MS(20);   //vár az eszköz beállására 
+	cmd1LCD(0x30);  // 4 bites interface 
+	DELAY_MS(5);    //vár az eszköz beállására 
+	cmd1LCD(0x30);  // 4 bites interface 
+	DELAY_MS(1);    //vár az eszköz beállására 
+	cmd1LCD(0x30);  // 4 bites interface
 
-cmd1LCD(0x20);  // 4 bites interface 
-cmdLCD(0x28);   // 2 soros display, 5x7 karakter 
-cmdLCD(0x08);   // dispaly off 
-cmdLCD(0x01);   // képerny? törlése, kurzor alaphelyzetbe állítás 
-cmdLCD(0x06);   // automatikus inkrementálás, nem lépteti a kijelz?t 
-cmdLCD(0x0C);   // a display bekapcsolása; kurzor és villogás kikapcsolva
-DELAY_MS(3);
+	cmd1LCD(0x20);  // 4 bites interface 
+	cmdLCD(0x28);   // 2 soros display, 5x7 karakter 
+	cmdLCD(0x08);   // dispaly off 
+	cmdLCD(0x01);   // képerny? törlése, kurzor alaphelyzetbe állítás 
+    cmdLCD(0x06);   // automatikus inkrementálás, nem lépteti a kijelz?t 
+    cmdLCD(0x0C);   // a display bekapcsolása; kurzor és villogás kikapcsolva
+    DELAY_MS(3);
 }
 
-void SetupClock(){	
-    /*
-	* Belso OSC=7.37MHz
-	* FOSC=7.37E6/1/2*43/2=79.2275MHz
-	* pp 121
-	*/
-	CLKDIVbits.FRCDIV = 0;	//nincs leosztva az orajel forras
-
-	// PLL modul beallitasa
-	CLKDIVbits.PLLPRE = 0;	//N1=2
-	PLLFBD = 41;			//M=43
-	CLKDIVbits.PLLPOST = 0;	//N2=2
-
-	while (!OSCCONbits.LOCK);	// varakozas PLL kesz-ig
-
-	RCONbits.SWDTEN = 0;		// Watchdog timer ki
-}
 
 ///////////</LCD>///////////
 
@@ -287,7 +268,6 @@ void putsUART1(const char *s){
     putUART1( *s++); // karakter küldése
 }
 
-
 //várakozás új karakter kiolvasásáig
 char getUART1( void){
     while ( !U1STAbits.URXDA); // várakozás új karakter érkezésére
@@ -313,22 +293,42 @@ char *getsUART1( char *s, int len){
 ///////////</UART>///////////
 
 ///////////<FUNCTIONALITY>///////////
+
+void SetupClock(){	
+    /*
+	* Belso OSC=7.37MHz
+	* FOSC=7.37E6/1/2*43/2=79.2275MHz
+	* pp 121
+	*/
+	CLKDIVbits.FRCDIV = 0;	//nincs leosztva az orajel forras
+
+	// PLL modul beallitasa
+	CLKDIVbits.PLLPRE = 0;	//N1=2
+	PLLFBD = 41;			//M=43
+	CLKDIVbits.PLLPOST = 0;	//N2=2
+
+	while (!OSCCONbits.LOCK);	// varakozas PLL kesz-ig
+
+	RCONbits.SWDTEN = 0;		// Watchdog timer ki
+}
+
 /**
  * Both SPI and UART use the TRISB leg
  * This function switch between the two mode
- * @param mode
+ * @param mode The identifier char of the mode either 's' or 'e'
  */
 void confTRISB(char mode){
     if(mode == 's'){
         TRISB=TRISB & 0x0FFF;   //LED kimenet, minden más bemenet 
-        _TRISB5 = 1;              //SDI1 bemenet
+        _TRISB5 = 1;            //SDI1 bemenet
     }
     else if(mode == 'u')TRISB=0; //PORTB kimenet
 }
 /**
- * Authenticate the root user with root PWD
- * @param pwd
+ * Authenticate the root user with root PWD/Azonosítás mesterjelszóval
+ * @param pwd/jelszó
  * @return 1 if the password is correct 0 if its not
+ * @return 1 ha helyes a jelszó 0 ha helytelen
  */
 int authenticate(char* pwd){
     if(strcmp(PWD,pwd) == 0){
@@ -348,10 +348,10 @@ int authenticate(char* pwd){
 }
 
 /**
- * Save data to a 64bit memory block of the EEPROM
- * @param addr The starting addres of the memory block
- * @param newEntry The message to save
- * @return The address of the end of the block
+ * Save data to a 64bit memory block of the EEPROM/64 bit mentése az EEPROM-ba
+ * @param addr The starting addres of the memory block/Kezdõ memóriacím
+ * @param newEntry The message to save/Mentendõ szöveg
+ * @return The address of the end of the block/A blokk végének címe
  */
 int saveData(int addr,char newEntry[]){
         confTRISB('s');
@@ -359,6 +359,7 @@ int saveData(int addr,char newEntry[]){
         confTRISB('e');
    
    //Prevents writing message when we initialize the program
+   //Amikor letároljuk a mesterjelszót ne jelenjen meg ez az üzenet
    if(strcmp(PWD,newEntry)!=0){
        putsUART1("\rData saved                                           \n\r");
        LCDclr();
@@ -367,9 +368,9 @@ int saveData(int addr,char newEntry[]){
   return addr + 64;
 }
 /**
- * Try to authenticate the user with the given passoword
- * @param addr The current maximum address
- * @param pwd The users password
+ * Try to authenticate the user with the given password/Felhasználó azonosítása jelszóval
+ * @param addr The current maximum address/A jelenlegi legmagasabb memóriacím
+ * @param pwd The users password/Jelszó
  */
 void login(int addr,char pwd[]){
     int i;
@@ -379,6 +380,8 @@ void login(int addr,char pwd[]){
         ReadEEn(i,buff,64);
         if(strcmp(buff,pwd) == 0){
             confTRISB('e');
+			//The extra spaces clear the line in case of a long previous message
+			//A plusz szóközök törlik az elõzõ esetlegesen hosszú üzenetet
             putsUART1("\rSuccesful login                                 \n\r");
             LCDclr();
             putsLCD("Succesful login"); 
@@ -387,9 +390,9 @@ void login(int addr,char pwd[]){
         }
     }
     R_LED;
-    putsUART1("\rWrong passowrd                                          \n\r");
+    putsUART1("\rWrong password                                          \n\r");
     LCDclr();
-    putsLCD("Wrong passowrd"); 
+    putsLCD("Wrong password"); 
 }
 
 ///////////</FUNCTIONALITY>///////////
@@ -399,11 +402,12 @@ int main(void) {
     initLCD();                  //LCD modul inicializálása 
 
     //Sets up the SPI module for the commuinication with the EEPROM
+	//SPI modul bekonfigurálása az EEPROM-mal való kommunikációhoz
     confTRISB('s');
     __builtin_write_OSCCONL(OSCCON & 0xbf); //PPSUnLock 
     //SPI 
     RPINR20bits.SDI1R=5;    //14-es láb SDI1 
-    RPOR3bits.RP6R=7;       //15-ös láb     SDO1 
+    RPOR3bits.RP6R=7;       //15-ös láb SDO1 
     RPOR3bits.RP7R=8;       //16-os láb SCLK1 
     //SPI inicializálása 5MHz-es órajellel 
     SPI1CON1 = 0x013A; // master mód, CKP=0, CKE=1, 8-bites, 1:2, 1:4 
@@ -411,6 +415,7 @@ int main(void) {
     InitEE(); //EEPROM inicializálása
 
     //Sets up the UART commuinication
+	//UART kommunikáció beállítása
     confTRISB('u');
     TRISBbits.TRISB11=1; //RX bemenet
     RPOR5bits.RP10R=3; //21-es láb TX
@@ -422,15 +427,20 @@ int main(void) {
 
     putsUART1("Program started\r\n"); //Szöveg kiküldése az UART1-re
     /**
-     * Read Modes
-     * 0:General command
-     * 1:Waiting for master password
-     * 2:Set new entry
-     * 3:Login as normal user
+     * @readMode
+     * 0:Waiting for general command/Várakozás általános utasításra
+     * 1:Waiting for master password/Várakozás a mesterjelszóra
+     * 2:Waiting to set new entry/Várakozás az új jelszóra
+     * 3:Waiting to normal user password/Várakozás a normál felhasználói jelszóra
     */
     int readMode = 0;
+    /**
+     *  @addr
+     *  The currently used highest memory address
+     *  A jelenleg használt legmagasabb memóriacím
+     */
+	int addr = 0;
     int flag = 0;
-    int addr = 0;
     int i; 
 
     //Puts master password to memory
@@ -445,7 +455,7 @@ int main(void) {
         if(readMode == 0){
             B_LED;                          //B LED világít
             switch(c[0]) {
-                   case 'a':               //Add new entry
+                   case 'a':               //Add new password entry
                         flag = 1; 
                         putsUART1("Login as root\n\r");
                         putsUART1("Password:\r\n");
