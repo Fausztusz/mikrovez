@@ -184,7 +184,7 @@ void configLCD(void){
     
 }
 
-//Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata //Adatvonalak használata
+//Adatvonalak használata 
 void toLCD(char c) {
 	_LATB12 = c & 0x01; //D4
 	_LATB13 = (c >> 1)& 0x01; //D5
@@ -354,17 +354,20 @@ int authenticate(char* pwd){
  * @return The address of the end of the block/A blokk végének címe
  */
 int saveData(int addr,char newEntry[]){
+    if(addr < 20*64+1){    
         confTRISB('s');
         WriteEEn(addr,newEntry,64);
         confTRISB('e');
-   
-   //Prevents writing message when we initialize the program
-   //Amikor letároljuk a mesterjelszót ne jelenjen meg ez az üzenet
-   if(strcmp(PWD,newEntry)!=0){
-       putsUART1("\rData saved                                           \n\r");
-       LCDclr();
-       putsLCD("Data saved");
-   }
+
+       //Prevents writing message when we initialize the program
+       //Amikor letároljuk a mesterjelszót ne jelenjen meg ez az üzenet
+       if(strcmp(PWD,newEntry)!=0){
+           putsUART1("\rData saved                                           \n\r");
+           LCDclr();
+           putsLCD("Data saved");
+       }
+    }
+    else putsUART1("\rThe memory is full\n\r");
   return addr + 64;
 }
 /**
@@ -376,7 +379,8 @@ void login(int addr,char pwd[]){
     int i;
     confTRISB('s');
     char buff[64];
-    for(i = 0;i <= addr;i += 64){
+    //for(i = 0; i <= addr; i += 64){
+    for(i = 0; i <= 20*64; i += 64){
         ReadEEn(i,buff,64);
         if(strcmp(buff,pwd) == 0){
             confTRISB('e');
@@ -394,6 +398,21 @@ void login(int addr,char pwd[]){
     LCDclr();
     putsLCD("Wrong password"); 
 }
+
+/**
+ * Gets the highest not zero memory block address
+ * @return The highest not empty memoryblock's address
+ * @return Visszaadja a legnagyobb nem üres memóriablokk címét
+ */
+int getAddr(){
+    int i;
+    char buff[64];
+    for(i = 64; i <= 20*64; i += 64){
+        ReadEEn(i,buff,64);
+        if(strcmp(buff,"") == 0)return i;       
+    }
+    return 20*64;
+}   
 
 ///////////</FUNCTIONALITY>///////////
 int main(void) {
@@ -446,14 +465,14 @@ int main(void) {
     //Puts master password to memory
     confTRISB('s');
     addr = saveData(addr,PWD);
+    addr = getAddr();
     confTRISB('e');
-
+    B_LED;
     char c[64];
     //Main loop
     while(1){
         getsUART1(c,64); //beérkezo karakterekre várunk vagy Enterre
         if(readMode == 0){
-            B_LED;                          //B LED világít
             switch(c[0]) {
                    case 'a':               //Add new password entry
                         flag = 1; 
@@ -463,7 +482,7 @@ int main(void) {
                         putsLCD("Login as root");
                         break; 
                     case 'l': 
-                        flag=3;
+                        flag = 3;
                         LCDclr();
                         putsLCD("Enter password");
                         putsUART1("Enter password:\n\r");
@@ -483,6 +502,7 @@ int main(void) {
                         putsLCD("Invalid command");   
                         break;
                 }
+                
             }
         if(readMode == 1) flag = (authenticate(c)) ? 2 : 0;
         if(readMode == 2) {
@@ -491,9 +511,10 @@ int main(void) {
                 LCDclr();
                 putsLCD("Reseting memory"); 
                 confTRISB('s');
-                for(i = 64; i < 10000; i++)WriteEE(i,0);//Resets memory
+                for(i = 64; i <= 20*64; i++)WriteEE(i,0);//Resets memory
                 confTRISB('e');
                 putsUART1("Memory reseted                                \n\r");
+                addr = 64;
                 LCDclr();
                 putsLCD("Memory reseted"); 
             } 
@@ -502,8 +523,8 @@ int main(void) {
         }
         if(readMode == 3) {login(addr, c);flag = 0; }
         
-        readMode = flag;
         if(readMode == 0)B_LED;
+        readMode = flag;
     }
     return (0); 
 }
